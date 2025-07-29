@@ -1,2 +1,3 @@
 .env
 *.pdf
+vector_store/
