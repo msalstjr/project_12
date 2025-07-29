@@ -25,21 +25,24 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 uploaded_files = []
 built_categories = set()
 
-category_keywords = {
-    "암보험": ["암"],
-    "실비보험": ["실손"],
-    "상해보험": ["상해"],
-    "화재보험": ["화재"]
-}
+category_keywords = {"cancer"   : ["암"],
+                     "medical"  : ["실손"],
+                     "accident" : ["상해"],
+                     "fire"     : ["화재"],
+                     }
 
 def get_category_from_filename(filename):
     for category, keywords in category_keywords.items():
         if any(keyword in filename for keyword in keywords):
             return category
-    return "암보험"  # fallback
+    return "cancer"  # fallback
 
-text_splitter = RecursiveCharacterTextSplitter(chunk_size=200, chunk_overlap=20)
-embedding = OpenAIEmbeddings(model="text-embedding-3-small", openai_api_key=OPENAI_API_KEY)
+text_splitter = RecursiveCharacterTextSplitter(chunk_size    = 200, 
+                                               chunk_overlap = 20,
+                                               )
+embedding = OpenAIEmbeddings(model = "text-embedding-3-small", 
+                             openai_api_key = OPENAI_API_KEY,
+                             )
 
 def upload_pdf(file, file_list):
     filename = os.path.basename(file.name)
@@ -73,20 +76,20 @@ def build_vectorstores(file_list):
     return f"📚 총 {len(built_categories)}개 카테고리 벡터스토어 생성 완료: {', '.join(built_categories)}"
 
 category_keywords_full = {
-    "암보험": [
+    "cancer": [
         "암", "유사암", "특정암", "전이암", "재진단암", "갑상선암", "폐암", "간암", "췌장암",
         "소화기관암", "혈액암", "생식기암", "항암", "항암치료", "방사선치료", "항암방사선",
         "항암약물", "표적항암", "호르몬약물", "CAR-T", "진단비", "암진단비", "암사망"
     ],
-    "실비보험": [
+    "medical": [
         "실손", "의료비", "입원", "통원", "진료비", "검사비", "수술", "응급실", "치료",
         "자기부담금", "보험금 한도", "진단서", "의무기록", "보상종목", "다수보험", "연대책임"
     ],
-    "상해보험": [
+    "accident": [
         "상해", "재해", "사고", "교통사고", "골절", "화상", "후유장해", "사고사망",
         "입원비", "수술비", "상해사망", "상해특약"
     ],
-    "화재보험": [
+    "fire": [
         "화재", "폭발", "붕괴", "누수", "도난", "배상책임", "재산", "가재도구",
         "복구", "손해", "피해", "주택", "화재보험", "화재사고"
     ]
@@ -98,7 +101,10 @@ def classify_question(question):
             return category
     return "cancer"
 
-llm = ChatAnthropic(model="claude-opus-4-20250514", temperature=0, max_tokens=1024, api_key=ANTHROPIC_API_KEY)
+llm = ChatAnthropic(model = "claude-opus-4-20250514", 
+                    temperature = 0, 
+                    max_tokens = 1024, 
+                    api_key = ANTHROPIC_API_KEY)
 prompt = hub.pull("rlm/rag-prompt")
 llm_only_chain = llm | StrOutputParser()
 
@@ -117,8 +123,19 @@ def answer_question(question, chat_history):
     rag_chain = ( {"context": retriever, "question": RunnablePassthrough()} | prompt | llm | StrOutputParser() )
     rag_answer = rag_chain.invoke(question)
 
+    # 수정된 부분
+    kor_category = ''
+    if category == "cancer":
+        kor_category = '암 보험'
+    elif category == "medical":
+        kor_category = "실비 보험"
+    elif category == "accident":
+        kor_category = "상해 보험"
+    elif category == "fire":
+        kor_category = "화재보험"
+
     # RAG 답변만!
-    combined = f"[📂 선택된 카테고리: {category}]\n\n"
+    combined = f"[📂 선택된 카테고리: {kor_category}]\n\n"
     combined += f"📚 RAG 기반 응답:\n{rag_answer}"
     chat_history.append((question, combined))
     return chat_history
