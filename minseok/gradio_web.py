@@ -15,7 +15,7 @@ from langchain import hub
 
 # 1. 환경설정 및 폴더 준비
 load_dotenv()
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+OPENAI_API_KEY    = os.getenv("OPENAI_API_KEY")
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 
 VECTOR_ROOT = "vectorstores"
@@ -30,17 +30,17 @@ built_categories = set()
 
 # 2. 카테고리 정의
 category_keywords = {
-    "cancer": ["암"],
-    "medical": ["실손"],
+    "cancer"  : ["암"],
+    "medical" : ["실손"],
     "accident": ["상해"],
-    "fire": ["화재"],
+    "fire"    : ["화재"],
 }
 
 def get_category_from_filename(filename):
     for category, keywords in category_keywords.items():
         if any(keyword in filename for keyword in keywords):
             return category
-    return "cancer"  # fallback
+    return "cancer"                               # fallback
 
 # 3. PDF → 좌/우 텍스트 분리 함수 (cancer 전용)
 def extract_left_right_text(pdf_path):
@@ -59,7 +59,7 @@ def extract_left_right_text(pdf_path):
                 left_text += text.strip() + " "
             else:
                 right_text += text.strip() + " "
-        left_text_total += f"[페이지 {page_num + 1} - 좌]\n{left_text.strip()}\n\n"
+        left_text_total  += f"[페이지 {page_num + 1} - 좌]\n{left_text.strip()}\n\n"
         right_text_total += f"[페이지 {page_num + 1} - 우]\n{right_text.strip()}\n\n"
     return left_text_total + right_text_total
 
@@ -92,11 +92,12 @@ def upload_pdf(file, file_list):
     return file_list, "\n".join(all_filenames)
 
 # 6. 청크 및 임베딩
-text_splitter = RecursiveCharacterTextSplitter(chunk_size=200, chunk_overlap=20)
-embedding = OpenAIEmbeddings(
-    model="text-embedding-3-small",
-    openai_api_key=OPENAI_API_KEY,
-)
+text_splitter = RecursiveCharacterTextSplitter(chunk_size    = 200, 
+                                               chunk_overlap = 20,
+                                               )
+embedding = OpenAIEmbeddings(model = "text-embedding-3-small",
+                             openai_api_key = OPENAI_API_KEY,
+                             )
 
 # 7. 카테고리별 벡터스토어 생성
 def build_vectorstores(file_list):
@@ -145,12 +146,11 @@ def classify_question(question):
     return "cancer"
 
 # 9. LLM 및 프롬프트 세팅
-llm = ChatAnthropic(
-    model="claude-opus-4-20250514",
-    temperature=0,
-    max_tokens=1024,
-    api_key=ANTHROPIC_API_KEY,
-)
+llm = ChatAnthropic(model = "claude-opus-4-20250514",
+                    temperature = 0,
+                    max_tokens = 1024,
+                    api_key = ANTHROPIC_API_KEY,
+                    )
 prompt = hub.pull("rlm/rag-prompt")
 llm_only_chain = llm | StrOutputParser()
 
@@ -170,12 +170,12 @@ def answer_question(question, chat_history):
     )
     rag_answer = rag_chain.invoke(question)
     kor_category = {
-        "cancer": "암 보험",
-        "medical": "실비 보험",
+        "cancer"  : "암 보험",
+        "medical" : "실비 보험",
         "accident": "상해 보험",
-        "fire": "화재보험"
+        "fire"    : "화재보험",
     }.get(category, category)
-    combined = f"[📂 선택된 카테고리: {kor_category}]\n\n"
+    combined  = f"[📂 선택된 카테고리: {kor_category}]\n\n"
     combined += f"📚 RAG 기반 응답:\n{rag_answer}"
     chat_history.append((question, combined))
     return chat_history
